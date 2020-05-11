@@ -27,8 +27,8 @@ static constexpr std::string_view InitialPositionKey{ "initialPosition" };
 static constexpr std::string_view ShowTitleInTitlebarKey{ "showTerminalTitleInTitlebar" };
 static constexpr std::string_view ThemeKey{ "theme" };
 static constexpr std::string_view TabWidthModeKey{ "tabWidthMode" };
-static constexpr std::wstring_view EqualTabWidthModeValue{ L"equal" };
-static constexpr std::wstring_view TitleLengthTabWidthModeValue{ L"titleLength" };
+static constexpr std::string_view EqualTabWidthModeValue{ "equal" };
+static constexpr std::string_view TitleLengthTabWidthModeValue{ "titleLength" };
 static constexpr std::string_view ShowTabsInTitlebarKey{ "showTabsInTitlebar" };
 static constexpr std::string_view WordDelimitersKey{ "wordDelimiters" };
 static constexpr std::string_view CopyOnSelectKey{ "copyOnSelect" };
@@ -36,11 +36,11 @@ static constexpr std::string_view CopyFormattingKey{ "copyFormatting" };
 static constexpr std::string_view LaunchModeKey{ "launchMode" };
 static constexpr std::string_view ConfirmCloseAllKey{ "confirmCloseAllTabs" };
 static constexpr std::string_view SnapToGridOnResizeKey{ "snapToGridOnResize" };
-static constexpr std::wstring_view DefaultLaunchModeValue{ L"default" };
-static constexpr std::wstring_view MaximizedLaunchModeValue{ L"maximized" };
-static constexpr std::wstring_view LightThemeValue{ L"light" };
-static constexpr std::wstring_view DarkThemeValue{ L"dark" };
-static constexpr std::wstring_view SystemThemeValue{ L"system" };
+static constexpr std::string_view DefaultLaunchModeValue{ "default" };
+static constexpr std::string_view MaximizedLaunchModeValue{ "maximized" };
+static constexpr std::string_view LightThemeValue{ "light" };
+static constexpr std::string_view DarkThemeValue{ "dark" };
+static constexpr std::string_view SystemThemeValue{ "system" };
 
 static constexpr std::string_view DebugFeaturesKey{ "debugFeatures" };
 
@@ -49,6 +49,34 @@ static constexpr bool debugFeaturesDefault{ true };
 #else
 static constexpr bool debugFeaturesDefault{ false };
 #endif
+
+template<>
+struct JsonUtils::ConversionTrait<ElementTheme> : public JsonUtils::KeyValueMapper<ElementTheme, JsonUtils::ConversionTrait<ElementTheme>>
+{
+    static constexpr std::array<pair_type, 3> mappings = {
+        pair_type{ SystemThemeValue, ElementTheme::Default },
+        pair_type{ LightThemeValue, ElementTheme::Light },
+        pair_type{ DarkThemeValue, ElementTheme::Dark },
+    };
+};
+
+template<>
+struct JsonUtils::ConversionTrait<LaunchMode> : public JsonUtils::KeyValueMapper<LaunchMode, JsonUtils::ConversionTrait<LaunchMode>>
+{
+    static constexpr std::array<pair_type, 2> mappings = {
+        pair_type{ DefaultLaunchModeValue, LaunchMode::DefaultMode },
+        pair_type{ MaximizedLaunchModeValue, LaunchMode::MaximizedMode },
+    };
+};
+
+template<>
+struct JsonUtils::ConversionTrait<TabViewWidthMode> : public JsonUtils::KeyValueMapper<TabViewWidthMode, JsonUtils::ConversionTrait<TabViewWidthMode>>
+{
+    static constexpr std::array<pair_type, 2> mappings = {
+        pair_type{ EqualTabWidthModeValue, TabViewWidthMode::Equal },
+        pair_type{ TitleLengthTabWidthModeValue, TabViewWidthMode::SizeToContent },
+    };
+};
 
 GlobalAppSettings::GlobalAppSettings() :
     _keybindings{ winrt::make_self<winrt::TerminalApp::implementation::AppKeyBindings>() },
@@ -106,28 +134,7 @@ void GlobalAppSettings::ApplyToSettings(TerminalSettings& settings) const noexce
 // - a JsonObject which is an equivalent serialization of this object.
 Json::Value GlobalAppSettings::ToJson() const
 {
-    Json::Value jsonObject;
-
-    jsonObject[JsonKey(DefaultProfileKey)] = winrt::to_string(Utils::GuidToString(_DefaultProfile));
-    jsonObject[JsonKey(InitialRowsKey)] = _InitialRows;
-    jsonObject[JsonKey(InitialColsKey)] = _InitialCols;
-    jsonObject[JsonKey(RowsToScrollKey)] = _RowsToScroll;
-    jsonObject[JsonKey(InitialPositionKey)] = _SerializeInitialPosition(_InitialPosition);
-    jsonObject[JsonKey(AlwaysShowTabsKey)] = _AlwaysShowTabs;
-    jsonObject[JsonKey(ShowTitleInTitlebarKey)] = _ShowTitleInTitlebar;
-    jsonObject[JsonKey(ShowTabsInTitlebarKey)] = _ShowTabsInTitlebar;
-    jsonObject[JsonKey(WordDelimitersKey)] = winrt::to_string(_WordDelimiters);
-    jsonObject[JsonKey(CopyOnSelectKey)] = _CopyOnSelect;
-    jsonObject[JsonKey(CopyFormattingKey)] = _CopyFormatting;
-    jsonObject[JsonKey(LaunchModeKey)] = winrt::to_string(_SerializeLaunchMode(_LaunchMode));
-    jsonObject[JsonKey(ThemeKey)] = winrt::to_string(_SerializeTheme(_Theme));
-    jsonObject[JsonKey(TabWidthModeKey)] = winrt::to_string(_SerializeTabWidthMode(_TabWidthMode));
-    jsonObject[JsonKey(KeybindingsKey)] = _keybindings->ToJson();
-    jsonObject[JsonKey(ConfirmCloseAllKey)] = _ConfirmCloseAllTabs;
-    jsonObject[JsonKey(SnapToGridOnResizeKey)] = _SnapToGridOnResize;
-    jsonObject[JsonKey(DebugFeaturesKey)] = _DebugFeaturesEnabled;
-
-    return jsonObject;
+    return Json::Value::nullSingleton();
 }
 
 // Method Description:
@@ -145,20 +152,17 @@ GlobalAppSettings GlobalAppSettings::FromJson(const Json::Value& json)
 
 void GlobalAppSettings::LayerJson(const Json::Value& json)
 {
-    if (auto defaultProfile{ json[JsonKey(DefaultProfileKey)] })
-    {
-        auto guid = Utils::GuidFromString(GetWstringFromJson(defaultProfile));
-        _DefaultProfile = guid;
-    }
+    JsonUtils::GetValueForKey(json, DefaultProfileKey, _DefaultProfile);
 
-    JsonUtils::GetBool(json, AlwaysShowTabsKey, _AlwaysShowTabs);
+    JsonUtils::GetValueForKey(json, AlwaysShowTabsKey, _AlwaysShowTabs);
 
-    JsonUtils::GetBool(json, ConfirmCloseAllKey, _ConfirmCloseAllTabs);
+    JsonUtils::GetValueForKey(json, ConfirmCloseAllKey, _ConfirmCloseAllTabs);
 
-    JsonUtils::GetInt(json, InitialRowsKey, _InitialRows);
+    JsonUtils::GetValueForKey(json, InitialRowsKey, _InitialRows);
 
-    JsonUtils::GetInt(json, InitialColsKey, _InitialCols);
+    JsonUtils::GetValueForKey(json, InitialColsKey, _InitialCols);
 
+    // TODO GH#XXXX: manual parsing!
     if (auto rowsToScroll{ json[JsonKey(RowsToScrollKey)] })
     {
         //if it's not an int we fall back to setting it to 0, which implies using the system setting. This will be the case if it's set to "system"
@@ -172,35 +176,28 @@ void GlobalAppSettings::LayerJson(const Json::Value& json)
         }
     }
 
-    if (auto initialPosition{ json[JsonKey(InitialPositionKey)] })
-    {
-        _ParseInitialPosition(initialPosition.asString(), _InitialPosition);
-    }
+    JsonUtils::GetValueForKey(json, InitialPositionKey, _InitialPosition);
 
-    JsonUtils::GetBool(json, ShowTitleInTitlebarKey, _ShowTitleInTitlebar);
+    JsonUtils::GetValueForKey(json, ShowTitleInTitlebarKey, _ShowTitleInTitlebar);
 
-    JsonUtils::GetBool(json, ShowTabsInTitlebarKey, _ShowTabsInTitlebar);
+    JsonUtils::GetValueForKey(json, ShowTabsInTitlebarKey, _ShowTabsInTitlebar);
 
-    JsonUtils::GetWstring(json, WordDelimitersKey, _WordDelimiters);
+    JsonUtils::GetValueForKey(json, WordDelimitersKey, _WordDelimiters);
 
-    JsonUtils::GetBool(json, CopyOnSelectKey, _CopyOnSelect);
+    JsonUtils::GetValueForKey(json, CopyOnSelectKey, _CopyOnSelect);
 
-    JsonUtils::GetBool(json, CopyFormattingKey, _CopyFormatting);
+    JsonUtils::GetValueForKey(json, CopyFormattingKey, _CopyFormatting);
 
-    if (auto launchMode{ json[JsonKey(LaunchModeKey)] })
-    {
-        _LaunchMode = _ParseLaunchMode(GetWstringFromJson(launchMode));
-    }
+    JsonUtils::GetValueForKey(json, LaunchModeKey, _LaunchMode);
 
-    if (auto theme{ json[JsonKey(ThemeKey)] })
-    {
-        _Theme = _ParseTheme(GetWstringFromJson(theme));
-    }
+    JsonUtils::GetValueForKey(json, ThemeKey, _Theme);
 
-    if (auto tabWidthMode{ json[JsonKey(TabWidthModeKey)] })
-    {
-        _TabWidthMode = _ParseTabWidthMode(GetWstringFromJson(tabWidthMode));
-    }
+    JsonUtils::GetValueForKey(json, TabWidthModeKey, _TabWidthMode);
+
+    JsonUtils::GetValueForKey(json, SnapToGridOnResizeKey, _SnapToGridOnResize);
+
+    // GetValueForKey will only override the current value if the key exists
+    JsonUtils::GetValueForKey(json, DebugFeaturesKey, _DebugFeaturesEnabled);
 
     if (auto keybindings{ json[JsonKey(KeybindingsKey)] })
     {
@@ -212,52 +209,6 @@ void GlobalAppSettings::LayerJson(const Json::Value& json)
         // warnings generated from parsing these keybindings, add them to our
         // list of warnings.
         _keybindingsWarnings.insert(_keybindingsWarnings.end(), warnings.begin(), warnings.end());
-    }
-
-    JsonUtils::GetBool(json, SnapToGridOnResizeKey, _SnapToGridOnResize);
-
-    // GetBool will only override the current value if the key exists
-    JsonUtils::GetBool(json, DebugFeaturesKey, _DebugFeaturesEnabled);
-}
-
-// Method Description:
-// - Helper function for converting a user-specified cursor style corresponding
-//   CursorStyle enum value
-// Arguments:
-// - themeString: The string value from the settings file to parse
-// Return Value:
-// - The corresponding enum value which maps to the string provided by the user
-ElementTheme GlobalAppSettings::_ParseTheme(const std::wstring& themeString) noexcept
-{
-    if (themeString == LightThemeValue)
-    {
-        return ElementTheme::Light;
-    }
-    else if (themeString == DarkThemeValue)
-    {
-        return ElementTheme::Dark;
-    }
-    // default behavior for invalid data or SystemThemeValue
-    return ElementTheme::Default;
-}
-
-// Method Description:
-// - Helper function for converting a CursorStyle to its corresponding string
-//   value.
-// Arguments:
-// - theme: The enum value to convert to a string.
-// Return Value:
-// - The string value for the given CursorStyle
-std::wstring_view GlobalAppSettings::_SerializeTheme(const ElementTheme theme) noexcept
-{
-    switch (theme)
-    {
-    case ElementTheme::Light:
-        return LightThemeValue;
-    case ElementTheme::Dark:
-        return DarkThemeValue;
-    default:
-        return SystemThemeValue;
     }
 }
 
@@ -272,136 +223,53 @@ std::wstring_view GlobalAppSettings::_SerializeTheme(const ElementTheme theme) n
 //   (100, 100, 100): we only read the first two values, this is equivalent to (100, 100)
 // Arguments:
 // - initialPosition: the initial position string from json
-//   ret: reference to a struct whose optionals will be populated
+//   initialX: reference to the _initialX member
+//   initialY: reference to the _initialY member
 // Return Value:
 // - None
-void GlobalAppSettings::_ParseInitialPosition(const std::string& initialPosition,
-                                              LaunchPosition& ret) noexcept
+template<>
+struct JsonUtils::ConversionTrait<LaunchPosition>
 {
-    static constexpr char singleCharDelim = ',';
-    std::stringstream tokenStream(initialPosition);
-    std::string token;
-    uint8_t initialPosIndex = 0;
-
-    // Get initial position values till we run out of delimiter separated values in the stream
-    // or we hit max number of allowable values (= 2)
-    // Non-numeral values or empty string will be caught as exception and we do not assign them
-    for (; std::getline(tokenStream, token, singleCharDelim) && (initialPosIndex < 2); initialPosIndex++)
+    LaunchPosition FromJson(const Json::Value& json)
     {
-        try
-        {
-            int32_t position = std::stoi(token);
-            if (initialPosIndex == 0)
-            {
-                ret.x.emplace(position);
-            }
+        LaunchPosition ret;
+        std::string initialPosition{ json.asString() };
+        static constexpr char singleCharDelim = ',';
+        std::stringstream tokenStream(initialPosition);
+        std::string token;
+        uint8_t initialPosIndex = 0;
 
-            if (initialPosIndex == 1)
+        // Get initial position values till we run out of delimiter separated values in the stream
+        // or we hit max number of allowable values (= 2)
+        // Non-numeral values or empty string will be caught as exception and we do not assign them
+        for (; std::getline(tokenStream, token, singleCharDelim) && (initialPosIndex < 2); initialPosIndex++)
+        {
+            try
             {
-                ret.y.emplace(position);
+                int32_t position = std::stoi(token);
+                if (initialPosIndex == 0)
+                {
+                    ret.x.emplace(position);
+                }
+
+                if (initialPosIndex == 1)
+                {
+                    ret.y.emplace(position);
+                }
+            }
+            catch (...)
+            {
+                // Do nothing
             }
         }
-        catch (...)
-        {
-            // Do nothing
-        }
+        return ret;
     }
-}
 
-// Method Description:
-// - Helper function for converting X/Y initial positions to a string
-//   value.
-// Arguments:
-// - position: the launch position to serialize
-// Return Value:
-// - The concatenated string for the the current initial position
-std::string GlobalAppSettings::_SerializeInitialPosition(const LaunchPosition& position) noexcept
-{
-    std::string serializedInitialPos = "";
-    if (position.x.has_value())
+    bool CanConvert(const Json::Value& json)
     {
-        serializedInitialPos += std::to_string(position.x.value());
+        return json.isString();
     }
-
-    serializedInitialPos += ", ";
-
-    if (position.y.has_value())
-    {
-        serializedInitialPos += std::to_string(position.y.value());
-    }
-
-    return serializedInitialPos;
-}
-
-// Method Description:
-// - Helper function for converting the user-specified launch mode
-//   to a LaunchMode enum value
-// Arguments:
-// - launchModeString: The string value from the settings file to parse
-// Return Value:
-// - The corresponding enum value which maps to the string provided by the user
-LaunchMode GlobalAppSettings::_ParseLaunchMode(const std::wstring& launchModeString) noexcept
-{
-    if (launchModeString == MaximizedLaunchModeValue)
-    {
-        return LaunchMode::MaximizedMode;
-    }
-
-    return LaunchMode::DefaultMode;
-}
-
-// Method Description:
-// - Helper function for converting a LaunchMode to its corresponding string
-//   value.
-// Arguments:
-// - launchMode: The enum value to convert to a string.
-// Return Value:
-// - The string value for the given LaunchMode
-std::wstring_view GlobalAppSettings::_SerializeLaunchMode(const LaunchMode launchMode) noexcept
-{
-    switch (launchMode)
-    {
-    case LaunchMode::MaximizedMode:
-        return MaximizedLaunchModeValue;
-    default:
-        return DefaultLaunchModeValue;
-    }
-}
-
-// Method Description:
-// - Helper function for converting the user-specified tab width
-//   to a TabViewWidthMode enum value
-// Arguments:
-// - tabWidthModeString: The string value from the settings file to parse
-// Return Value:
-// - The corresponding enum value which maps to the string provided by the user
-TabViewWidthMode GlobalAppSettings::_ParseTabWidthMode(const std::wstring& tabWidthModeString) noexcept
-{
-    if (tabWidthModeString == TitleLengthTabWidthModeValue)
-    {
-        return TabViewWidthMode::SizeToContent;
-    }
-    // default behavior for invalid data or EqualTabWidthValue
-    return TabViewWidthMode::Equal;
-}
-
-// Method Description:
-// - Helper function for converting a TabViewWidthMode to its corresponding string
-//   value.
-// Arguments:
-// - tabWidthMode: The enum value to convert to a string.
-// Return Value:
-// - The string value for the given TabWidthMode
-std::wstring_view GlobalAppSettings::_SerializeTabWidthMode(const TabViewWidthMode tabWidthMode) noexcept
-{
-    switch (tabWidthMode)
-    {
-    case TabViewWidthMode::SizeToContent:
-        return TitleLengthTabWidthModeValue;
-    default:
-        return EqualTabWidthModeValue;
-    }
-}
+};
 
 // Method Description:
 // - Adds the given colorscheme to our map of schemes, using its name as the key.
