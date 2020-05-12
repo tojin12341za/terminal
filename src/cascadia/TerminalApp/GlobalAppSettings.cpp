@@ -58,7 +58,7 @@ GlobalAppSettings::GlobalAppSettings() :
     _InitialCols{ DEFAULT_COLS },
     _RowsToScroll{ DEFAULT_ROWSTOSCROLL },
     _WordDelimiters{ DEFAULT_WORD_DELIMITERS },
-    _DebugFeatures{ debugFeaturesDefault }
+    _DebugFeaturesEnabled{ debugFeaturesDefault }
 {
 }
 
@@ -125,7 +125,7 @@ Json::Value GlobalAppSettings::ToJson() const
     jsonObject[JsonKey(KeybindingsKey)] = _keybindings->ToJson();
     jsonObject[JsonKey(ConfirmCloseAllKey)] = _ConfirmCloseAllTabs;
     jsonObject[JsonKey(SnapToGridOnResizeKey)] = _SnapToGridOnResize;
-    jsonObject[JsonKey(DebugFeaturesKey)] = _DebugFeatures;
+    jsonObject[JsonKey(DebugFeaturesKey)] = _DebugFeaturesEnabled;
 
     return jsonObject;
 }
@@ -217,7 +217,7 @@ void GlobalAppSettings::LayerJson(const Json::Value& json)
     JsonUtils::GetBool(json, SnapToGridOnResizeKey, _SnapToGridOnResize);
 
     // GetBool will only override the current value if the key exists
-    JsonUtils::GetBool(json, DebugFeaturesKey, _DebugFeatures);
+    JsonUtils::GetBool(json, DebugFeaturesKey, _DebugFeaturesEnabled);
 }
 
 // Method Description:
