@@ -11,7 +11,6 @@
 #include "ActionAndArgs.h"
 #include "KeyChordSerialization.h"
 #include "Utils.h"
-#include "JsonUtils.h"
 #include <winrt/Microsoft.Terminal.Settings.h>
 
 using namespace winrt::Microsoft::Terminal::Settings;

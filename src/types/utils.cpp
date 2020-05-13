@@ -35,6 +35,29 @@ GUID Utils::GuidFromString(const std::wstring wstr)
 }
 
 // Method Description:
+// - Parses a GUID from a narrow string representation of the GUID.
+// Arguments:
+// - str: a string representation of the GUID to parse
+// Return Value:
+// - A GUID if the string could successfully be parsed. On failure, throws the
+//      failing HRESULT.
+GUID Utils::GuidFromString(const std::string_view str)
+{
+    // We're taking an optimization here to avoid round-tripping through the kernel (yes.)
+    // to convert a string that-in valid form-only contains ASCII to UTF-16.
+    // This transformation is safe because all of the characters that make up valid GUIDs
+    // occupy codepoints <128. Anything else will fail the IID parse later.
+    std::array<wchar_t, 39> wideString{ 0 };
+    std::transform(str.cbegin(), str.cend(), wideString.begin(), [](const char c) -> wchar_t {
+        return static_cast<wchar_t>(c);
+    });
+
+    GUID result{};
+    THROW_IF_FAILED(IIDFromString(wideString.data(), &result));
+    return result;
+}
+
+// Method Description:
 // - Creates a GUID, but not via an out parameter.
 // Return Value:
 // - A GUID if there's enough randomness; otherwise, an exception.

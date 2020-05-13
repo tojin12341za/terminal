@@ -11,6 +11,8 @@ Author(s):
 - Mike Griese (migrie) 12-Jun-2018
 --*/
 
+#pragma once
+
 namespace Microsoft::Console::Utils
 {
     bool IsValidHandle(const HANDLE handle) noexcept;
@@ -31,6 +33,7 @@ namespace Microsoft::Console::Utils
 
     std::wstring GuidToString(const GUID guid);
     GUID GuidFromString(const std::wstring wstr);
+    GUID GuidFromString(const std::string_view wstr);
     GUID CreateGuid();
 
     std::string ColorToHexString(const til::color color);
